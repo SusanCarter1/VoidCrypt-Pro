@@ -6,7 +6,21 @@ import customtkinter as ctk
 from tkinterdnd2 import TkinterDnD, DND_FILES
 from PIL import Image
 import sys
+import ctypes
 
+# ================= 解决 Windows 高分屏字体模糊问题 =================
+try:
+    # 针对 Windows 8.1 及以上版本
+    ctypes.windll.shcore.SetProcessDpiAwareness(1)
+except Exception:
+    pass
+
+try:
+    # 针对 Windows 10 较新版本，开启更高级的 DPI 识别
+    ctypes.windll.user32.SetProcessDpiAwarenessContext(-4)
+except Exception:
+    pass
+# ===================================================================
 # --- 引入商业级流式加密组件 ---
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -51,7 +65,8 @@ def process_file_worker(mode, filepath, password):
     temp_path = filepath + ".vtmp"  # 建立临时加工厂
 
     try:
-        update_ui(0, "🔄 正在榨取内存生成量子密钥 (约需1-2秒)...", "#aaaaaa")
+        # 明亮主题下的中性提示色
+        update_ui(0, "🔄 正在榨取内存生成量子密钥 (约需1-2秒)...", "#555555")
         file_size = os.path.getsize(filepath)
 
         if file_size == 0:
@@ -79,19 +94,18 @@ def process_file_worker(mode, filepath, password):
                     f_out.write(encryptor.update(chunk))
                     processed_size += len(chunk)
 
-                    # 实时计算进度并更新 UI
+                    # 实时计算进度并更新 UI (明亮主题：深蓝色)
                     progress = processed_size / file_size
-                    update_ui(progress, "🛡️ 正在进行流式加密封锁...", "#66ccff")
+                    update_ui(progress, "🛡️ 正在进行流式加密封锁...", "#005FB8")
 
                 f_out.write(encryptor.finalize())
                 f_out.write(encryptor.tag)  # GCM 必须把认证标签写在文件最后
 
             # 成功后，原子级替换原文件
-            # 成功后，原子级替换原文件
             os.replace(temp_path, filepath)
-            update_ui(1.0, "✅ 文件已进入最高级别量子锁定。", "#66ff66")
+            update_ui(1.0, "✅ 文件已进入最高级别量子锁定。", "#107C41") # 深绿色
             app.after(0, lambda: messagebox.showinfo("加密成功",
-                                                     "您的文件已采用 AES-256-GCM 锁定。\n⚠️ 警告：哪怕神仙下凡也解不开，请把密码刻在脑子里！"))
+                                                     "您的文件已采用 AES-256-GCM 锁定。\n⚠️ 警告：请把密码刻在脑子里！"))
 
         elif mode == "decrypt":
             if file_size < (SALT_SIZE + NONCE_SIZE + 16):
@@ -121,23 +135,24 @@ def process_file_worker(mode, filepath, password):
                     f_out.write(decryptor.update(chunk))
                     processed_size += len(chunk)
 
+                    # (明亮主题：深橙色)
                     progress = processed_size / ciphertext_size
-                    update_ui(progress, "🔑 正在进行流式授权解码...", "#f39c12")
+                    update_ui(progress, "🔑 正在进行流式授权解码...", "#C26700")
 
                 # 验证防篡改标签
                 decryptor.finalize()
 
             os.replace(temp_path, filepath)
-            update_ui(1.0, "✅ 身份验证通过，文件已完美还原。", "#66ff66")
+            update_ui(1.0, "✅ 身份验证通过，文件已完美还原。", "#107C41")
             app.after(0, lambda: messagebox.showinfo("解密成功", "验证通过，您的文件已完美还原。"))
 
     except InvalidTag:
         if os.path.exists(temp_path): os.remove(temp_path)  # 销毁残次品
-        update_ui(0, "⛔ 拒绝访问：防篡改机制触发。", "#ff6666")
+        update_ui(0, "⛔ 拒绝访问：防篡改机制触发。", "#D13438") # 深红色
         app.after(0, lambda: messagebox.showerror("拒绝访问", "⛔ 密码错误，或者文件遭到篡改破坏！"))
     except Exception as e:
         if os.path.exists(temp_path): os.remove(temp_path)
-        update_ui(0, "❌ 发生致命错误。", "#ff6666")
+        update_ui(0, "❌ 发生致命错误。", "#D13438")
         app.after(0, lambda: messagebox.showerror("发生致命错误", f"操作失败，详情:\n{e}"))
     finally:
         # 重置 UI 状态
@@ -162,7 +177,7 @@ def trigger_process(mode):
         messagebox.showwarning("提示", "安全密码不能为空！")
         return
     if mode == "encrypt" and password != confirm_pwd:
-        status_label.configure(text=f"⛔ 密码不一致，请重新输入。", text_color="#ff6666")
+        status_label.configure(text=f"⛔ 密码不一致，请重新输入。", text_color="#D13438")
         return
 
     is_processing = True
@@ -184,7 +199,7 @@ def drop_file(event):
     if filepath.startswith('{') and filepath.endswith('}'):
         filepath = filepath[1:-1]
     file_path_var.set(filepath)
-    update_ui(0, "📁 目标已锁定，等待验证指令。", "white")
+    update_ui(0, "📁 目标已锁定，等待验证指令。", "#333333")
 
 
 def toggle_password_visibility():
@@ -192,8 +207,12 @@ def toggle_password_visibility():
     new_show = "" if current_show == "●" else "●"
     pwd_entry.configure(show=new_show)
     confirm_entry.configure(show=new_show)
-    toggle_btn.configure(text="🙈" if new_show == "" else "👁", text_color="#aaaaaa" if new_show == "" else "white")
-
+    # 明亮主题下的眼睛图标颜色切换
+    toggle_btn.configure(
+        text="🙈" if new_show == "" else "👁",
+        text_color="#000000",
+        font=ctk.CTkFont(size=22)
+    )
 
 # ================= 3. 高清 UI 界面 =================
 try:
@@ -208,56 +227,54 @@ class CTkWithDnD(ctk.CTk, TkinterDnD.DnDWrapper):
         self.TkdndVersion = TkinterDnD._require(self)
 
 
-ctk.set_appearance_mode("dark")
+# ★ 核心修改：切换为浅色模式 ★
+ctk.set_appearance_mode("light")
 ctk.set_default_color_theme("blue")
 
+# 关闭 CTk 的自动缩放，依赖 Windows 自身的 DPI 渲染，确保极致清晰
+ctk.set_window_scaling(1.0)
+ctk.set_widget_scaling(1.0)
 app = CTkWithDnD()
 app.title("VoidCrypt™ Pro")
-app.geometry("580x560")  # 稍微拉长一点给进度条腾位置
+app.geometry("580x560")
 app.resizable(True, True)
-# ================= 新增：左上角标题栏图标 =================
+# app.configure(fg_color="#F9F9FB") # 可选：设置极浅灰背景，比纯白更有质感
+
+# ================= 窗口图标 =================
 try:
-    # 加载你的 1.ico 文件作为系统窗口图标
     app.iconbitmap(resource_path("1.ico"))
 except Exception as e:
     print(f"窗口图标加载失败: {e}")
-# ==========================================================
-font_normal = ctk.CTkFont(family="Microsoft YaHei", size=14)
-font_bold = ctk.CTkFont(family="Microsoft YaHei", size=14, weight="bold")
-font_title = ctk.CTkFont(family="Microsoft YaHei", size=24, weight="bold")
+# ============================================
+
+font_normal = ctk.CTkFont(family="Microsoft YaHei", size=15)
+font_bold = ctk.CTkFont(family="Microsoft YaHei", size=15, weight="bold")
+font_title = ctk.CTkFont(family="Microsoft YaHei", size=26, weight="bold")
 
 main_frame = ctk.CTkFrame(app, fg_color="transparent")
 main_frame.pack(fill="both", expand=True, padx=30, pady=25)
 
-# --- 界面右上角图标 ---
-#try:
-#    img_path = resource_path("1.png")
-#    logo_image = ctk.CTkImage(light_image=Image.open(img_path), dark_image=Image.open(img_path), size=(45, 45))
-#    logo_label = ctk.CTkLabel(main_frame, image=logo_image, text="")
-#    logo_label.place(relx=1.0, rely=0.0, anchor="ne", x=10, y=-10)
-#except Exception:
-#    pass
-
-title_label = ctk.CTkLabel(main_frame, text="🌌 VoidCrypt™ 文件加密", font=font_title)
+title_label = ctk.CTkLabel(main_frame, text="🌌 VoidCrypt™ 文件加密", font=font_title, text_color="#1A1A1A")
 title_label.pack(pady=(0, 8))
 
-sub_label = ctk.CTkLabel(main_frame, text="AES-256-GCM✖️Scrypt 内存硬化流式加密引擎", text_color="gray",
+sub_label = ctk.CTkLabel(main_frame, text="AES-256-GCM✖️Scrypt 内存硬化流式加密引擎", text_color="#666666",
                          font=ctk.CTkFont(family="Microsoft YaHei", size=12))
 sub_label.pack(pady=(0, 20))
 
-status_label = ctk.CTkLabel(main_frame, text="系统待机中。请拖入文件以继续...", text_color="#aaaaaa", font=font_normal)
+status_label = ctk.CTkLabel(main_frame, text="系统待机中。请拖入文件以继续...", text_color="#888888", font=font_normal)
 status_label.pack(pady=(0, 15), fill="x")
 
-# --- 拖拽区域 ---
+# --- 拖拽区域 (适配明亮主题) ---
 file_path_var = tk.StringVar()
-drop_frame = ctk.CTkFrame(main_frame, height=120, corner_radius=12, fg_color="#1c1c1c", border_width=2,
-                          border_color="#333333")
+# 改为极浅灰背景，浅灰色边框，营造干净的拟物感
+drop_frame = ctk.CTkFrame(main_frame, height=120, corner_radius=12, fg_color="#F3F4F6", border_width=1.5,
+                          border_color="#D1D5DB")
 drop_frame.pack(pady=5, fill="x")
 drop_frame.pack_propagate(False)
 
-drop_icon = ctk.CTkLabel(drop_frame, text="🌀", font=ctk.CTkFont(size=60), text_color="#555555")
+drop_icon = ctk.CTkLabel(drop_frame, text="🌀", font=ctk.CTkFont(size=55), text_color="#A0AABF")
 drop_icon.place(relx=0.5, rely=0.35, anchor="center")
-drop_text = ctk.CTkLabel(drop_frame, text="将机密文件拖拽到此处", text_color="#666666", font=font_bold)
+drop_text = ctk.CTkLabel(drop_frame, text="将机密文件拖拽到此处", text_color="#555555", font=font_bold)
 drop_text.place(relx=0.5, rely=0.75, anchor="center")
 
 drop_frame.drop_target_register(DND_FILES)
@@ -267,50 +284,57 @@ drop_icon.dnd_bind('<<Drop>>', drop_file)
 drop_text.drop_target_register(DND_FILES)
 drop_text.dnd_bind('<<Drop>>', drop_file)
 
-# --- 密码区域 ---
+# --- 密码区域 (适配明亮主题) ---
 pwd_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
 pwd_frame.pack(fill="x", pady=20)
 
 row1 = ctk.CTkFrame(pwd_frame, fg_color="transparent")
 row1.pack(fill="x", pady=(0, 10))
-ctk.CTkLabel(row1, text="访问密钥:", font=font_bold, width=70, anchor="w").pack(side="left")
+ctk.CTkLabel(row1, text="访问密钥:", font=font_bold, width=70, anchor="w", text_color="#333333").pack(side="left")
 password_var = tk.StringVar()
-pwd_entry = ctk.CTkEntry(row1, textvariable=password_var, show="●", height=38, corner_radius=6)
+pwd_entry = ctk.CTkEntry(row1, textvariable=password_var, show="●", height=38, corner_radius=6,
+                         fg_color="#FFFFFF", border_color="#D1D5DB", text_color="#000000")
 pwd_entry.pack(side="left", fill="x", expand=True, padx=(10, 10))
-toggle_btn = ctk.CTkButton(row1, text="👁", width=40, height=38, fg_color="#333333", hover_color="#444444",
+# 眼睛按钮调整为浅色
+toggle_btn = ctk.CTkButton(row1, text="👁", width=40, height=38,
+                           fg_color="#E5E7EB", hover_color="#D1D5DB",
+                           text_color="#000000", font=ctk.CTkFont(size=22),
                            command=toggle_password_visibility)
 toggle_btn.pack(side="right")
 
 row2 = ctk.CTkFrame(pwd_frame, fg_color="transparent")
 row2.pack(fill="x")
-ctk.CTkLabel(row2, text="确认密钥:", font=font_bold, width=70, anchor="w").pack(side="left")
+ctk.CTkLabel(row2, text="确认密钥:", font=font_bold, width=70, anchor="w", text_color="#333333").pack(side="left")
 confirm_var = tk.StringVar()
 confirm_entry = ctk.CTkEntry(row2, textvariable=confirm_var, show="●", height=38, corner_radius=6,
-                             placeholder_text="解密可留空")
+                             placeholder_text="解密可留空", placeholder_text_color="#A3A3A3",
+                             fg_color="#FFFFFF", border_color="#D1D5DB", text_color="#000000")
 confirm_entry.pack(side="left", fill="x", expand=True, padx=(10, 50))
 
-# --- 进度条控制台 (商业级升级核心) ---
+# --- 进度条控制台 (适配明亮主题) ---
 progress_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
 progress_frame.pack(fill="x", pady=(5, 15))
 
-progress_bar = ctk.CTkProgressBar(progress_frame, mode="determinate", height=12, fg_color="#333333",
-                                  progress_color="#00a86b")
+# 进度条底色调浅
+progress_bar = ctk.CTkProgressBar(progress_frame, mode="determinate", height=12, fg_color="#707070",
+                                  progress_color="#00A86B")
 progress_bar.set(0)
 progress_bar.pack(side="left", fill="x", expand=True, padx=(0, 10))
 
-percent_label = ctk.CTkLabel(progress_frame, text="0%", font=font_bold, text_color="#aaaaaa", width=40)
+percent_label = ctk.CTkLabel(progress_frame, text="0%", font=font_bold, text_color="#555555", width=40)
 percent_label.pack(side="right")
 
 # --- 操作按钮 ---
 action_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
 action_frame.pack(fill="x", pady=(10, 0))
 
-encrypt_btn = ctk.CTkButton(action_frame, text="🛡️ 绝对锁定 (加密)", height=42, fg_color="#b30000",
-                            hover_color="#cc0000", font=font_bold, command=lambda: trigger_process("encrypt"))
+# 按钮颜色微调，使其在白色背景下不那么刺眼但保持视觉冲击力
+encrypt_btn = ctk.CTkButton(action_frame, text="🛡️ 绝对锁定 (加密)", height=42, fg_color="#D92828",
+                            hover_color="#B31D1D", font=font_bold, command=lambda: trigger_process("encrypt"))
 encrypt_btn.pack(side="left", expand=True, padx=(0, 10))
 
-decrypt_btn = ctk.CTkButton(action_frame, text="🔑 授权解锁 (解密)", height=42, fg_color="#00a86b",
-                            hover_color="#00c87b", font=font_bold, command=lambda: trigger_process("decrypt"))
+decrypt_btn = ctk.CTkButton(action_frame, text="🔑 授权解锁 (解密)", height=42, fg_color="#00A86B",
+                            hover_color="#008C59", font=font_bold, command=lambda: trigger_process("decrypt"))
 decrypt_btn.pack(side="right", expand=True, padx=(10, 0))
 
 pwd_entry.focus()
