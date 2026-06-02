@@ -87,6 +87,7 @@ def process_file_worker(mode, filepath, password):
                 f_out.write(encryptor.tag)  # GCM 必须把认证标签写在文件最后
 
             # 成功后，原子级替换原文件
+            # 成功后，原子级替换原文件
             os.replace(temp_path, filepath)
             update_ui(1.0, "✅ 文件已进入最高级别量子锁定。", "#66ff66")
             app.after(0, lambda: messagebox.showinfo("加密成功",
